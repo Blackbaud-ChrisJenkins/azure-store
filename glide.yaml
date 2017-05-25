@@ -1,0 +1,6 @@
+package: github.com/blackbaud-chrisjenkins/azure-store
+import:
+- package: github.com/azure/azure-sdk-for-go
+  version: ^10.0.3-beta
+  subpackages:
+  - storage
