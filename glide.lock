@@ -1,8 +1,8 @@
 hash: ed831c341bbf66506e8fe42be609e6729aa0126d8c6fbef0b3d436c44f793eff
-updated: 2017-05-25T11:15:07.739757999-05:00
+updated: 2017-06-01T15:16:10.951061058-05:00
 imports:
 - name: github.com/azure/azure-sdk-for-go
-  version: 26132835cbefa2669a306b777f34b929b56aa0a2
+  version: 2629e2dfcfeab50896230140542c3b9d89b35ae1
   subpackages:
   - storage
 - name: github.com/Azure/go-autorest
