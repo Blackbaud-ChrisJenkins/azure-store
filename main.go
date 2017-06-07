@@ -10,6 +10,8 @@ import (
 	"io"
 	"encoding/hex"
 	"encoding/base64"
+	"flag"
+	"strings"
 )
 
 
@@ -30,9 +32,13 @@ func init() {
 }
 
 func main() {
-	dirs := os.Args[1:]
 
-	container = createContainer("humane")
+	dirsArg := flag.String("dir", ".", "directory(s) to upload")
+	containerName := flag.String("container", "default", "container to upload to")
+	flag.Parse()
+
+	dirs := strings.Split(*dirsArg, ",")
+	container = createContainer(*containerName)
 
 	filepaths := getFiles(dirs)
 	existingBlobs := getExistingBlobs()
