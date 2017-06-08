@@ -22,6 +22,9 @@ var (
 	container	*storage.Container
 )
 
+const MaxBlockSize = 104857600
+const MaxPutBlobSize = 268435456
+
 func init() {
 	accountName = getEnvVarOrExit("ABS_ACCOUNT_NAME")
 	accountKey = getEnvVarOrExit("ABS_ACCOUNT_KEY")
@@ -75,10 +78,8 @@ func getExistingBlobs() map[string]string {
 
 func getFileMd5(filePath string) (string, error) {
 	var returnMd5String string
-	file, err := os.Open(filePath)
-	if err != nil {
-		return returnMd5String, err
-	}
+
+	file := openFileOrFail(filePath)
 	defer file.Close()
 	hash := md5.New()
 	if _, err := io.Copy(hash, file); err != nil {
@@ -87,9 +88,7 @@ func getFileMd5(filePath string) (string, error) {
 	hashInBytes := hash.Sum(nil)[:16]
 	returnMd5String = hex.EncodeToString(hashInBytes)
 	return returnMd5String, nil
-
 }
-
 
 func syncFiles(files []string, blobs map[string]string) {
 	for _, file := range files {
@@ -101,15 +100,28 @@ func syncFiles(files []string, blobs map[string]string) {
 		}
 
 		fmt.Printf("Creating blob for %s\n", file)
-		blobOptions := &storage.PutBlobOptions{}
 		blob := container.GetBlobReference(baseFilename)
 
 		filehandle := openFileOrFail(file)
 		defer filehandle.Close()
 
-		err := blob.CreateBlockBlobFromReader(filehandle, blobOptions)
-		onErrorFail(err, fmt.Sprintf("Failed to upload %s", file))
+		filesize := fileSize(filehandle)
+
+		if (filesize <= MaxPutBlobSize) {
+			err := blob.CreateBlockBlobFromReader(filehandle, &storage.PutBlobOptions{})
+			onErrorFail(err, fmt.Sprintf("Failed to upload %s", file))
+		} else {
+			fmt.Printf("File is too large (%d)\n", filesize)
+			// upload file as blocks
+		}
 	}
+}
+
+func fileSize(file *os.File) int64 {
+	fstat, err := file.Stat()
+	onErrorFail(err, "Could not get FileInfo")
+
+	return fstat.Size()
 }
 
 func blobExists(file string, blobMd5 string) bool {
