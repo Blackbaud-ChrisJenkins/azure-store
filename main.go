@@ -135,7 +135,7 @@ func createBlockBlobFromLargeFile(name string, file *os.File) error {
 		if n == 0 { break }
 
 		block := storage.Block{
-			ID:blockName(blockCount),
+			ID:blockName(name, blockCount),
 			Status:storage.BlockStatusLatest,
 		}
 
@@ -153,8 +153,9 @@ func createBlockBlobFromLargeFile(name string, file *os.File) error {
 	return nil
 }
 
-func blockName(count int) string {
-	name := fmt.Sprintf("5%d", count)
+func blockName(filename string, count int) string {
+	md5sum := md5.Sum([]byte(filename))
+	name := fmt.Sprintf("%s5%d", md5sum[:8], count)
 	return base64.URLEncoding.EncodeToString([]byte(name))
 }
 
