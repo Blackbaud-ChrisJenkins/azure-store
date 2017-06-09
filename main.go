@@ -155,8 +155,8 @@ func createBlockBlobFromLargeFile(name string, file *os.File) error {
 
 func blockName(filename string, count int) string {
 	md5sum := md5.Sum([]byte(filename))
-	name := fmt.Sprintf("%s5%d", md5sum[:8], count)
-	return base64.URLEncoding.EncodeToString([]byte(name))
+	name := fmt.Sprintf("%s5%d", md5sum[:6], count)
+	return base64.StdEncoding.EncodeToString([]byte(name))
 }
 
 func fileSize(file *os.File) int64 {
