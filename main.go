@@ -22,8 +22,9 @@ var (
 	container	*storage.Container
 )
 
-const MaxBlockSize = 104857600
 const MaxPutBlobSize = 268435456
+const MaxBlockSize = 104857600
+const ChunkSize = MaxBlockSize/2
 
 func init() {
 	accountName = getEnvVarOrExit("ABS_ACCOUNT_NAME")
@@ -111,10 +112,50 @@ func syncFiles(files []string, blobs map[string]string) {
 			err := blob.CreateBlockBlobFromReader(filehandle, &storage.PutBlobOptions{})
 			onErrorFail(err, fmt.Sprintf("Failed to upload %s", file))
 		} else {
-			fmt.Printf("File is too large (%d)\n", filesize)
-			// upload file as blocks
+			fmt.Printf("File is too large (%d), uploading as blocks\n", filesize)
+			err := createBlockBlobFromLargeFile(baseFilename, filehandle)
+			onErrorFail(err, fmt.Sprintf("Failed to upload %s", file))
 		}
 	}
+}
+
+func createBlockBlobFromLargeFile(name string, file *os.File) error {
+
+	var blocks []storage.Block
+
+	blob := container.GetBlobReference(name)
+	blockCount := 0
+
+	fmt.Printf("uploading %s", name)
+	for {
+		chunk := make([]byte, ChunkSize)
+		n, err := file.Read(chunk)
+
+		if err != nil { return err }
+		if n == 0 { break }
+
+		block := storage.Block{
+			ID:blockName(blockCount),
+			Status:storage.BlockStatusLatest,
+		}
+
+		fmt.Print(".")
+		err = blob.PutBlock(block.ID, chunk[0:n], &storage.PutBlockOptions{})
+		if err != nil {
+			return err }
+
+		blocks = append(blocks, block)
+		if n < ChunkSize { break }
+		blockCount++
+	}
+	blob.PutBlockList(blocks, &storage.PutBlockListOptions{})
+	fmt.Println("")
+	return nil
+}
+
+func blockName(count int) string {
+	name := fmt.Sprintf("5%d", count)
+	return base64.URLEncoding.EncodeToString([]byte(name))
 }
 
 func fileSize(file *os.File) int64 {
