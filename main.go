@@ -154,7 +154,8 @@ func createBlockBlobFromLargeFile(name string, file *os.File, fileMd5 string) er
 	b64FileMd5Bytes, _ := hex.DecodeString(fileMd5)
 	b64FileMd5 := base64.StdEncoding.EncodeToString(b64FileMd5Bytes)
 
-	err := blob.PutBlockList(blocks, &storage.PutBlockListOptions{BlobContentMD5:b64FileMd5})
+	blob.Properties.ContentMD5 = b64FileMd5
+	err := blob.PutBlockList(blocks, &storage.PutBlockListOptions{})
 	fmt.Println("")
 	return err
 }
