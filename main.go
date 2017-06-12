@@ -96,7 +96,10 @@ func syncFiles(files []string, blobs map[string]string) {
 
 		baseFilename := filepath.Base(file)
 
-		if blobExists(file, blobs[baseFilename]) {
+		var fileMd5 string
+
+		fileMd5, _ = getFileMd5(file)
+		if blobs[baseFilename] == fileMd5 {
 			continue
 		}
 
@@ -113,13 +116,13 @@ func syncFiles(files []string, blobs map[string]string) {
 			onErrorFail(err, fmt.Sprintf("Failed to upload %s", file))
 		} else {
 			fmt.Printf("File is too large (%d), uploading as blocks\n", filesize)
-			err := createBlockBlobFromLargeFile(baseFilename, filehandle)
+			err := createBlockBlobFromLargeFile(baseFilename, filehandle, fileMd5)
 			onErrorFail(err, fmt.Sprintf("Failed to upload %s", file))
 		}
 	}
 }
 
-func createBlockBlobFromLargeFile(name string, file *os.File) error {
+func createBlockBlobFromLargeFile(name string, file *os.File, fileMd5 string) error {
 
 	var blocks []storage.Block
 
@@ -148,9 +151,12 @@ func createBlockBlobFromLargeFile(name string, file *os.File) error {
 		if n < ChunkSize { break }
 		blockCount++
 	}
-	blob.PutBlockList(blocks, &storage.PutBlockListOptions{})
+	b64FileMd5Bytes, _ := hex.DecodeString(fileMd5)
+	b64FileMd5 := base64.StdEncoding.EncodeToString(b64FileMd5Bytes)
+
+	err := blob.PutBlockList(blocks, &storage.PutBlockListOptions{BlobContentMD5:b64FileMd5})
 	fmt.Println("")
-	return nil
+	return err
 }
 
 func blockId(filename string, count int) string {
@@ -164,16 +170,6 @@ func fileSize(file *os.File) int64 {
 	onErrorFail(err, "Could not get FileInfo")
 
 	return fstat.Size()
-}
-
-func blobExists(file string, blobMd5 string) bool {
-	if blobMd5 != "" {
-		fileMd5, _ := getFileMd5(file)
-		if blobMd5 == fileMd5 {
-			return true
-		}
-	}
-	return false
 }
 
 func openFileOrFail(f string) *os.File {
